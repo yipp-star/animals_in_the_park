@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>觀察和記錄動物的運動方式</title>
+<style>
+  :root {
+    --sky: #8fd8f5; --grass: #6cc24a; --grass-d: #4ea635; --ink: #1f2d3d;
+    --sun: #ffd23f; --orange: #ff8a2b; --red: #e84545; --green: #1fa35c; --blue: #2f7de1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    font-family: "PingFang HK", "Noto Sans HK", "Noto Sans TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+    color: var(--ink); background: var(--sky); user-select: none; -webkit-user-select: none;
+  }
+  .screen { position: fixed; inset: 0; display: none; }
+  .screen.active { display: flex; }
+  button { font-family: inherit; cursor: pointer; border: none; touch-action: manipulation; }
+
+  /* ---------- Park screen ---------- */
+  #park { flex-direction: column; background: linear-gradient(#8fd8f5 0%, #d6f2fb 45%, #6cc24a 45%, #5ab53d 100%); }
+  .scenery { position: absolute; inset: 0; pointer-events: none; }
+  .hill { position: absolute; bottom: 42%; border-radius: 50% 50% 0 0; background: #8ad46a; }
+  .hill.h1 { left: -8%; width: 55%; height: 22%; }
+  .hill.h2 { right: -10%; width: 60%; height: 28%; background: #79c95a; }
+  .sun { position: absolute; top: 3%; right: 5%; width: 90px; height: 90px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 14px rgba(255,210,63,.35); }
+  .cloud { position: absolute; font-size: 90px; opacity: .95; }
+  .pond { position: absolute; left: 4%; bottom: 5%; width: 30%; height: 28%; background: #4bb7ea; border-radius: 50%; border: 8px solid #3a9fd4; }
+  .tree { position: absolute; bottom: 36%; font-size: 190px; line-height: 1; }
+  .path { position: absolute; left: 30%; right: 22%; bottom: 0; height: 14%; background: #e9d3a1; border-radius: 50% 50% 0 0; }
+  .hk { position: absolute; left: 50%; transform: translateX(-50%); bottom: 36%; font-size: 40px; opacity: .55; letter-spacing: 6px; }
+
+  .topbar {
+    position: relative; z-index: 3; margin: 14px auto 0; display: flex; align-items: center; gap: 16px;
+    background: #fff; border: 5px solid var(--orange); border-radius: 40px; padding: 10px 14px 10px 32px;
+    box-shadow: 0 6px 0 rgba(0,0,0,.15);
+  }
+  .topbar h1 { margin: 0; font-size: 40px; font-weight: 800; }
+  .speak-btn {
+    width: 72px; height: 72px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 38px;
+    box-shadow: 0 5px 0 #1f58a8; flex: none;
+  }
+  .speak-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #1f58a8; }
+
+  .animal-btn {
+    position: absolute; z-index: 2; background: #fff; border: 6px solid #fff; border-radius: 36px;
+    padding: 6px 22px 8px; display: flex; flex-direction: column; align-items: center;
+    box-shadow: 0 8px 0 rgba(0,0,0,.2); transition: transform .15s;
+    animation: bob 3s ease-in-out infinite;
+  }
+  .animal-btn .emo { font-size: 84px; line-height: 1.05; }
+  .animal-btn .nm { font-size: 40px; font-weight: 800; }
+  .animal-btn .emo img { display: block; width: 130px; height: 130px; object-fit: cover; border-radius: 24px; }
+  .animal-btn:active { transform: scale(.94); }
+  @keyframes bob { 0%,100% { margin-top: 0; } 50% { margin-top: -8px; } }
+  .animal-btn:nth-of-type(2n) { animation-delay: -1.2s; }
+  .animal-btn:nth-of-type(3n) { animation-delay: -2.1s; }
+
+  /* ---------- Activity screen ---------- */
+  #activity { flex-direction: column; background: #fff8e6; padding: 12px 22px 14px; gap: 10px; }
+  .head { display: flex; align-items: center; justify-content: center; gap: 20px; position: relative; }
+  .head h2 { margin: 0; font-size: 72px; font-weight: 900; line-height: 1.1; }
+  .head .speak-btn { width: 64px; height: 64px; font-size: 32px; }
+  .back-btn {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    background: var(--orange); color: #fff; font-size: 34px; font-weight: 800; padding: 12px 26px;
+    border-radius: 36px; box-shadow: 0 6px 0 #c2610f;
+  }
+  .back-btn:active { transform: translateY(calc(-50% + 4px)); box-shadow: 0 2px 0 #c2610f; }
+
+  .main { flex: 1; min-height: 0; display: flex; gap: 22px; }
+  .video-box {
+    flex: 1.25; min-width: 0; background: #000; border-radius: 28px; border: 6px solid var(--ink);
+    overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .no-video { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+    color: #fff; text-align: center; gap: 6px; padding: 20px; background: #34495e; }
+  .no-video .big { font-size: 110px; }
+  .no-video .small { font-size: 22px; opacity: .85; }
+  .video-box.missing .no-video { display: flex; }
+  .video-box.missing video { visibility: hidden; }
+
+  .panel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  .question { background: #fff; border: 5px solid var(--blue); border-radius: 26px; padding: 10px 16px; font-size: 40px; font-weight: 800; text-align: center; }
+  .options { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 12px; }
+  .opt {
+    font-size: 54px; font-weight: 900; border-radius: 26px; background: #fff; color: var(--ink);
+    border: 6px solid #b9c7d8; box-shadow: 0 7px 0 #b9c7d8; transition: transform .1s;
+  }
+  .opt:active { transform: translateY(5px); box-shadow: 0 2px 0 #b9c7d8; }
+  .opt.wrong { background: var(--red); border-color: #a82424; box-shadow: 0 7px 0 #a82424; color: #fff; animation: shake .4s; }
+  .opt.correct { background: var(--green); border-color: #0f7a40; box-shadow: 0 7px 0 #0f7a40; color: #fff; animation: pop .5s; }
+  .done .opt:not(.correct) { opacity: .35; pointer-events: none; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-12px); } 75% { transform: translateX(12px); } }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+  .result {
+    display: none; align-items: center; justify-content: space-between; gap: 18px;
+    background: #fff200; color: var(--ink); border: 6px solid var(--ink); border-radius: 30px; padding: 10px 24px;
+  }
+  .result.show { display: flex; animation: pop .5s; }
+  .result .answer { font-size: 56px; font-weight: 900; white-space: nowrap; }
+  .result .answer b { color: #c4001d; }
+  .result .msg { font-size: 38px; font-weight: 800; text-align: center; line-height: 1.25; }
+  .result .back-btn { position: static; transform: none; font-size: 32px; white-space: nowrap; }
+  .result .back-btn:active { transform: translateY(4px); }
+
+  @media (max-height: 760px) {
+    .head h2 { font-size: 60px; } .question { font-size: 34px; } .opt { font-size: 46px; }
+    .result .answer { font-size: 46px; } .result .msg { font-size: 32px; }
+    .topbar h1 { font-size: 34px; } .animal-btn .emo { font-size: 70px; } .animal-btn .nm { font-size: 34px; }
+  }
+  @media (orientation: portrait) {
+    .main { flex-direction: column; } .head h2 { font-size: 56px; } .back-btn { position: static; transform: none; }
+    .topbar h1 { font-size: 28px; } .result { flex-wrap: wrap; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 公園畫面 ===== -->
+<section id="park" class="screen active">
+  <div class="scenery">
+    <div class="sun"></div>
+    <div class="hill h1"></div><div class="hill h2"></div>
+    <div class="cloud" style="left:12%;top:8%">☁️</div>
+    <div class="cloud" style="left:58%;top:14%;font-size:70px">☁️</div>
+    <div class="tree" style="left:2%">🌳</div>
+    <div class="tree" style="right:3%;font-size:230px">🌳</div>
+    <div class="hk">🏙️ 🌺 🏙️</div>
+    <div class="pond"></div>
+    <div class="path"></div>
+  </div>
+
+  <div class="topbar">
+    <h1>請點選一隻公園裏的動物來觀察！</h1>
+    <button class="speak-btn" id="speakIntro" aria-label="朗讀">🔊</button>
+  </div>
+
+  <button class="animal-btn" data-id="fish"      style="left:9%;  bottom:12%"><span class="emo">🐟</span><span class="nm">魚</span></button>
+  <button class="animal-btn" data-id="sparrow"   style="left:17%; top:30%"><span class="emo">🐦</span><span class="nm">麻雀</span></button>
+  <button class="animal-btn" data-id="dragonfly" style="left:44%; top:26%"><span class="emo">🪰</span><span class="nm">蜻蜓</span></button>
+  <button class="animal-btn" data-id="monkey"    style="right:9%; top:34%"><span class="emo">🐒</span><span class="nm">猴子</span></button>
+  <button class="animal-btn" data-id="dog"       style="left:38%; bottom:10%"><span class="emo">🐕</span><span class="nm">狗</span></button>
+  <button class="animal-btn" data-id="snail"     style="right:30%; bottom:22%"><span class="emo">🐌</span><span class="nm">蝸牛</span></button>
+  <button class="animal-btn" data-id="frog"      style="right:6%; bottom:9%"><span class="emo">🐸</span><span class="nm">青蛙</span></button>
+</section>
+
+<!-- ===== 觀察畫面 ===== -->
+<section id="activity" class="screen">
+  <div class="head">
+    <button class="back-btn" id="backTop">🏞️ 返回公園</button>
+    <h2 id="animalName">魚</h2>
+    <button class="speak-btn" id="speakName" aria-label="朗讀動物名稱">🔊</button>
+  </div>
+
+  <div class="main">
+    <div class="video-box" id="videoBox">
+      <video id="video" controls autoplay loop muted playsinline webkit-playsinline preload="auto"></video>
+      <div class="no-video">
+        <div class="big" id="fallbackEmoji">🐟</div>
+        <div class="small" id="fallbackPath">找不到影片</div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel">
+      <div class="question">這隻動物是怎樣運動的？</div>
+      <div class="options" id="options"></div>
+    </div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="answer" id="answerText">魚 ➜ 游動</div>
+    <div class="msg">🎉 答對了！<br>請把答案寫在活動冊 P.11 上吧！</div>
+    <button class="back-btn" id="backBottom">🏞️ 返回公園</button>
+  </div>
+</section>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- 資料 ---------- */
+  var MOVES = ['爬行', '飛行', '游動', '行走', '跳躍', '攀爬'];
+  var ANIMALS = {
+    fish:      { name: '魚',   emoji: '🐟', video: './videos/fish.mp4',      answers: ['游動'] },
+    sparrow:   { name: '麻雀', emoji: '🐦', video: './videos/sparrow.mp4',   answers: ['飛行', '行走'] },
+    dog:       { name: '狗',   emoji: '🐕', video: './videos/dog.mp4',       answers: ['行走'] },
+    dragonfly: { name: '蜻蜓', emoji: '🪰', video: './videos/dragonfly.mp4', answers: ['飛行'] },
+    snail:     { name: '蝸牛', emoji: '🐌', video: './videos/snail.mp4',     answers: ['爬行'] },
+    monkey:    { name: '猴子', emoji: '🐒', video: './videos/monkey.mp4',    answers: ['攀爬'] },
+    frog:      { name: '青蛙', emoji: '🐸', video: './videos/frog.mp4',      answers: ['跳躍'] }
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var park = $('park'), activity = $('activity'), video = $('video'), videoBox = $('videoBox');
+  var optionsEl = $('options'), panel = $('panel'), resultEl = $('result');
+  var current = null, solved = false;
+
+  /* ---------- 粵語朗讀 (Web Speech API) ---------- */
+  var synth = ('speechSynthesis' in window) ? window.speechSynthesis : null;
+  var cantoneseVoice = null;
+
+  function pickVoice() {
+    if (!synth) return;
+    var voices = synth.getVoices() || [];
+    cantoneseVoice = null;
+    for (var i = 0; i < voices.length; i++) {
+      var l = (voices[i].lang || '').replace('_', '-').toLowerCase();
+      if (l === 'zh-hk' || l === 'yue-hk' || l === 'yue' || l.indexOf('zh-hk') === 0) { cantoneseVoice = voices[i]; break; }
+    }
+  }
+  if (synth) {
+    pickVoice();
+    if (synth.addEventListener) synth.addEventListener('voiceschanged', pickVoice);
+    else synth.onvoiceschanged = pickVoice;
+  }
+
+  function speak(text, opts) {
+    if (!synth) return;               // 不支援朗讀時，畫面文字仍可正常使用
+    opts = opts || {};
+    try {
+      if (!opts.queue) synth.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-HK';
+      if (cantoneseVoice) u.voice = cantoneseVoice;
+      u.rate = opts.rate || 0.8;      // 慢速，方便小一學生聆聽
+      u.pitch = 1.1;
+      synth.speak(u);
+    } catch (e) { /* 忽略朗讀錯誤 */ }
+  }
+
+  /* ---------- 音效 (Web Audio，無需音檔) ---------- */
+  var audioCtx = null;
+  function ctx() {
+    if (!audioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function tone(freq, start, dur, type, vol) {
+    var c = ctx(); if (!c) return;
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    var t = c.currentTime + start;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.25, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function chimeSuccess() {           // 輕快上行和弦
+    [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) { tone(f, i * 0.12, 0.35, 'triangle', 0.28); });
+  }
+  function soundRetry() {             // 柔和下行兩音
+    tone(392, 0, 0.25, 'sine', 0.2); tone(330, 0.2, 0.35, 'sine', 0.2);
+  }
+
+  /* ---------- 畫面切換 ---------- */
+  function show(screen) {
+    park.classList.toggle('active', screen === park);
+    activity.classList.toggle('active', screen === activity);
+  }
+
+  function buildOptions() {
+    optionsEl.innerHTML = '';
+    MOVES.forEach(function (m) {
+      var b = document.createElement('button');
+      b.className = 'opt'; b.type = 'button'; b.textContent = m; b.dataset.move = m;
+      b.addEventListener('click', function () { choose(b, m); });
+      optionsEl.appendChild(b);
+    });
+  }
+
+  function openAnimal(id) {
+    var a = ANIMALS[id]; if (!a) return;
+    current = a; solved = false;
+    ctx();                                    // 在點擊手勢內解鎖音訊
+    $('animalName').textContent = a.name;
+    $('fallbackEmoji').textContent = a.emoji;
+    $('fallbackPath').textContent = '找不到影片：' + a.video;
+    resultEl.classList.remove('show');
+    panel.classList.remove('done');
+    buildOptions();
+    show(activity);
+
+    videoBox.classList.remove('missing');
+    video.muted = true;
+    video.src = a.video;
+    video.load();
+    var p = video.play();
+    if (p && p.catch) p.catch(function () { /* 自動播放被阻擋時，學生可按播放鍵 */ });
+
+    speak(a.name);
+  }
+
+  video.addEventListener('error', function () { videoBox.classList.add('missing'); });
+
+  function backToPark() {
+    if (synth) synth.cancel();
+    video.pause(); video.removeAttribute('src'); video.load();
+    show(park);
+  }
+
+  /* ---------- 答題 ---------- */
+  function choose(btn, move) {
+    if (solved || !current) return;
+    if (current.answers.indexOf(move) !== -1) {
+      solved = true;
+      btn.classList.add('correct');
+      panel.classList.add('done');
+      $('answerText').innerHTML = current.name + ' ➜ <b>' + move + '</b>';
+      resultEl.classList.add('show');
+      chimeSuccess();
+      speak(move);
+      speak('答對了！太棒了！', { queue: true });
+    } else {
+      btn.classList.add('wrong');
+      setTimeout(function () { btn.classList.remove('wrong'); }, 900);
+      soundRetry();
+      speak(move);
+      speak('不對哦，再試一次吧！', { queue: true });
+    }
+  }
+
+  /* ---------- 動物圖片 ----------
+     把圖片放在 images 資料夾，檔名為 fish.jpg、sparrow.jpg、dog.jpg、dragonfly.jpg、
+     snail.jpg、monkey.jpg、frog.jpg。若用 PNG，把下面的 'jpg' 改成 'png'。
+     找不到圖片時，會繼續顯示 emoji。 */
+  var IMAGE_FOLDER = './images/';
+  var IMAGE_EXT = 'jpg';
+
+  Array.prototype.forEach.call(document.querySelectorAll('.animal-btn'), function (b) {
+    var holder = b.querySelector('.emo');
+    var img = new Image();
+    img.alt = '';
+    img.onload = function () { holder.textContent = ''; holder.appendChild(img); };
+    img.src = IMAGE_FOLDER + b.dataset.id + '.' + IMAGE_EXT;
+  });
+
+  /* ---------- 事件 ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.animal-btn'), function (b) {
+    b.addEventListener('click', function () { openAnimal(b.dataset.id); });
+  });
+  $('speakIntro').addEventListener('click', function () { speak('請點選一隻公園裏的動物來觀察！'); });
+  $('speakName').addEventListener('click', function () { if (current) speak(current.name); });
+  $('backTop').addEventListener('click', backToPark);
+  $('backBottom').addEventListener('click', backToPark);
+})();
+</script>
+</body>
+</html>
